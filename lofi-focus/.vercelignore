@@ -1,0 +1,11 @@
+.data
+.env
+.env.*
+!.env.example
+.git
+.cache
+node_modules
+test
+work
+*.zip
+wrangler.jsonc
