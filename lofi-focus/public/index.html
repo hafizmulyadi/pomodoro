@@ -1,13 +1,584 @@
-<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17132c"><meta name="description" content="Ruang fokus pribadi dengan Pomodoro, suasana lofi, YouTube, task, dan statistik."><title>Lofi Focus — Ruang fokusmu</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"></head>
-<body><div class="scene" id="scene"><div id="sceneImage"></div><video id="sceneVideo" muted loop playsinline hidden></video></div><div class="shade"></div>
-<div class="app"><header><a class="brand" href="/" aria-label="Lofi Focus beranda"><svg viewBox="0 0 32 32" fill="none"><path d="M22 5A12 12 0 1 0 27 23 13 13 0 0 1 22 5Z" stroke="currentColor" stroke-width="2"/><path d="m25 8 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" fill="currentColor"/></svg><span>lofi<span class="brand-light">focus</span><small>RUANG UNTUK BERFOKUS</small></span></a><nav id="nav" aria-label="Navigasi utama"><button data-page="focus" class="selected">Fokus</button><button data-page="tasks">Task</button><button data-page="music">Musik</button><button data-page="stats">Statistik</button><button data-page="settings">Pengaturan</button></nav><div class="header-tools"><button id="backgroundButton" class="icon" aria-label="Pilih background" title="Pilih background">▧</button><button id="fullscreen" class="icon" aria-label="Layar penuh" title="Layar penuh">⛶</button><button id="focusMode" class="pill" aria-pressed="false">◉ <span>Mode fokus</span></button></div></header>
-<main><section id="page-focus" class="page focus-page"><div class="room-label"><span class="tiny">SUASANA SAAT INI</span><button id="roomName">Moonlit terrace ↗</button></div><div class="timer-area"><div class="mode-tabs"><button id="focusTab" class="selected">Waktu fokus</button><button id="breakTab">Istirahat</button></div><div class="timer-ring"><svg viewBox="0 0 360 360" aria-hidden="true"><circle class="ring-track" cx="180" cy="180" r="167"/><circle id="ring" cx="180" cy="180" r="167"/></svg><div class="timer-content"><span id="timerEyebrow" class="tiny">SATU HAL DALAM SATU WAKTU</span><div id="time" role="timer" aria-label="Waktu tersisa">25:00</div><div id="session">SESI 1 / 4</div><span id="activeTask">Pilih task untuk mulai fokus</span></div></div><div class="timer-controls"><button id="reset" class="circle" aria-label="Reset timer" title="Reset timer">↺</button><button id="start" class="start">▶ <span>Mulai fokus</span></button><button id="skip" class="circle" aria-label="Lewati sesi" title="Lewati sesi">▸▸</button></div><div class="presets"><button data-preset="25,5" class="selected">25 / 5</button><button data-preset="50,10">50 / 10</button><button data-preset="10,2">10 / 2</button><button id="custom">Kustom <span>↗</span></button></div><p class="keyboard-hint">SPACE untuk mulai / jeda <span>·</span> Z untuk Zen</p></div>
-<div class="focus-footer"><section class="glass music-mini"><div class="mini-art">♫</div><div class="track-meta"><span class="tiny">YOUTUBE</span><button id="miniTrack">Pilih musik untuk fokus</button><small id="miniArtist">Tempel tautan video atau playlist</small></div><button id="miniPlay" class="circle small" aria-label="Putar atau jeda YouTube">▶</button><div class="song-progress"><i id="miniSongProgress"></i></div></section><section class="glass ambience-mini"><button id="ambienceOpen"><span>≋</span> Suasana</button><button id="ambienceToggle" class="pill" aria-pressed="false">Nyalakan</button><input id="miniMaster" type="range" min="0" max="100" value="70" aria-label="Volume ambience"></section><section class="glass task-mini"><div class="section-line"><span class="tiny">TASK AKTIF</span><button data-page="tasks">Lihat semua ↗</button></div><div id="miniTaskEmpty">Apa yang ingin diselesaikan?</div><div id="miniTasks"></div><form id="quickTaskForm"><input id="quickTask" maxlength="180" placeholder="Tambah task…" aria-label="Task baru" required><button aria-label="Tambah task">+</button></form></section></div></section>
-<section id="page-tasks" class="page hidden"><div class="page-head"><span class="tiny">LANGKAH KECIL, KEMAJUAN NYATA</span><h1>Rencana fokusmu</h1><p>Pilih satu task. Beri waktu untuk menyelesaikannya.</p></div><form class="glass task-form" id="taskForm"><input id="taskInput" placeholder="Apa yang ingin kamu kerjakan?" maxlength="180" required aria-label="Nama task"><label>Estimasi sesi <input id="taskEstimate" type="number" min="1" max="99" value="1" required></label><button class="primary">+ Tambah task</button></form><div id="taskList" class="glass task-list"></div></section>
-<section id="page-music" class="page hidden"><div class="page-head"><span class="tiny">TEMUKAN RITMEMU</span><h1>Musik & suasana</h1><p>Musik pilihanmu, ditemani suara yang menenangkan.</p></div><div class="columns"><section class="glass card"><div class="section-line"><h2>YouTube</h2><span id="youtubeStatus" class="muted">Pilih video</span></div><form id="youtubeForm" class="youtube-form"><label class="stack">Tautan video / playlist<input id="youtubeUrl" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=…" required maxlength="500"></label><label class="stack">Nama playlist (opsional)<input id="youtubeName" maxlength="120" placeholder="Contoh: Lofi untuk belajar"></label><button id="youtubeSubmit" class="primary full">Muat video / playlist</button></form><div class="now-playing"><div class="album" id="album">♫</div><div><h3 id="trackTitle">Musik untuk menemanimu</h3><p id="trackArtist">Video YouTube pilihanmu.</p><a id="youtubeLink" hidden target="_blank" rel="noopener">Buka di YouTube ↗</a></div></div><input id="songSeek" type="range" min="0" max="100" value="0" aria-label="Posisi lagu" disabled><div class="section-line muted"><small id="songPosition">0:00</small><small id="songDuration">0:00</small></div><div class="playback"><button id="musicPrev" class="circle" aria-label="Lagu sebelumnya">◂◂</button><button id="musicPlay" class="circle accent" aria-label="Putar atau jeda musik">▶</button><button id="musicNext" class="circle" aria-label="Lagu berikutnya">▸▸</button><label>Volume<input id="musicVolume" type="range" min="0" max="100" value="60" aria-label="Volume YouTube"></label></div><button id="youtubeShow" class="pill full">Tampilkan mini player</button><p id="musicError" class="notice" role="status"></p><div class="section-line"><h3>Koleksi video & playlist</h3><button id="playlistFilter" class="pill">♡ Favorit</button></div><div id="playlists" class="playlist-list"><p class="empty">Tambahkan tautan video atau playlist favoritmu.</p></div><h3>Terakhir diputar</h3><div id="recentTracks" class="playlist-list"><p class="empty">Riwayat video yang diputar di aplikasi ini.</p></div></section><section class="glass card"><div class="section-line"><h2>Ambience mixer</h2><button id="mixerToggle" class="pill">Nyalakan</button></div><p class="muted">Racik suasanamu. Setiap suara punya volume sendiri.</p><div id="mixer"></div><label class="setting">Volume utama<input id="masterVolume" type="range" min="0" max="100" value="70"></label><small class="muted">Suara ambience sintetis, dibuat langsung di perangkatmu.</small></section></div></section>
-<section id="page-stats" class="page hidden"><div class="page-head"><span class="tiny">SETIAP MENIT BERARTI</span><h1>Perjalanan fokusmu</h1><p id="statsSubtitle">Mulai sesi pertamamu hari ini.</p></div><div id="statCards" class="stat-grid"></div><div class="columns"><section class="glass card"><div class="section-line"><h2>Fokus mingguan</h2><span class="muted">7 hari terakhir</span></div><div id="weekChart" class="chart"></div><p id="productiveDay" class="muted"></p></section><section class="glass card"><h2>Targetmu</h2><div id="goals"></div></section></div><section class="glass card"><h2>Pencapaian</h2><div id="badges" class="badges"></div></section></section>
-<section id="page-settings" class="page hidden"><div class="page-head"><span class="tiny">BUAT NYAMAN DENGAN CARAMU</span><h1>Pengaturan ruang</h1></div><div class="columns"><section class="glass card"><h2>Pomodoro</h2><label class="setting">Durasi fokus <span><input id="focusMinutes" type="number" min="1" max="180" value="25"> menit</span></label><label class="setting">Durasi istirahat <span><input id="breakMinutes" type="number" min="1" max="60" value="5"> menit</span></label><label class="setting">Jumlah sesi <input id="sessionCount" type="number" min="1" max="12" value="4"></label><label class="setting">Mulai istirahat otomatis <input id="autoBreak" type="checkbox" role="switch" checked></label><label class="setting">Mulai fokus otomatis <input id="autoFocus" type="checkbox" role="switch"></label><label class="setting">Target harian <span><input id="dailyGoal" type="number" min="1" max="1440" value="120"> menit</span></label><label class="setting">Target mingguan <span><input id="weeklyGoal" type="number" min="1" max="10080" value="600"> menit</span></label></section><section class="glass card"><h2>Pengingat suara</h2><label class="setting">Pilihan voice<select id="voiceMode"><option value="auto">Otomatis</option><option value="female">Perempuan</option><option value="male">Laki-laki</option><option value="off">Mati</option></select></label><label class="setting">Suara tersedia<select id="voiceName"><option value="">Pilih otomatis</option></select></label><p id="voiceNote" class="muted">Menggunakan voice yang tersedia di browser/perangkat.</p><button id="testVoice" class="pill">♪ Coba suara</button><label class="setting">Volume pengingat<input id="soundVolume" type="range" min="0" max="100" value="75"></label><label class="setting">Bunyi akhir sesi<input id="chime" type="checkbox" role="switch" checked></label><label class="setting">Notifikasi desktop<input id="notifications" type="checkbox" role="switch"></label></section><section class="glass card"><h2>Tampilan & fokus</h2><label class="setting">Tema<select id="theme"><option value="auto">Otomatis mengikuti background</option><option value="midnight">Midnight</option><option value="light">Terang</option></select></label><label class="setting">Animasi background<input id="animation" type="checkbox" role="switch" checked></label><label class="setting">Simpan mini player di mode fokus<input id="keepPlayer" type="checkbox" role="switch" checked></label><button id="settingsBackground" class="pill">▧ Pilih background</button><button id="zenButton" class="pill">Masuk Zen</button></section><section class="glass card"><h2>YouTube</h2><p class="muted">Tempel tautan video atau playlist publik dari YouTube. Tidak memerlukan Client ID, API key, atau login YouTube.</p><p class="muted">Mini player tetap terlihat saat video diputar. Video dijeda saat masuk Zen, menutup player, atau meninggalkan tab. Beberapa video tidak mengizinkan pemutaran di situs lain.</p><button id="youtubeSettingsOpen" class="pill">Buka musik YouTube</button></section><section class="glass card storage-card"><h2>Penyimpanan</h2><p class="muted">Task, sesi, dan upload disimpan di server untuk profil browser ini. Cookie profil diperlukan untuk membukanya kembali.</p><p id="saveStatus" role="status">Menghubungkan penyimpanan…</p><button id="retrySave" class="pill" hidden>Coba simpan lagi</button></section></div></section></main>
-<footer class="status-bar"><span id="todaySummary">0 menit fokus hari ini</span><button id="zen">☾ Zen mode</button><span id="clock"></span></footer></div>
-<button id="exitZen" class="pill hidden">Keluar Zen · Esc</button><div id="toast" role="status" aria-live="polite"></div>
-<dialog id="backgroundDialog"><div class="dialog-head"><div><span class="tiny">GANTI SUASANA</span><h2>Tempat untuk fokus</h2></div><button id="closeBackground" class="circle" aria-label="Tutup background">×</button></div><div class="section-line"><h3>Background pilihanmu</h3><button id="favoriteBackgrounds" class="pill">♡ Favorit</button></div><div id="backgroundGrid" class="background-grid"></div><h3>Preset lofi</h3><div id="presetGrid" class="background-grid"></div><h3>Upload kamu</h3><div id="customBackgrounds" class="background-grid"></div><label class="upload">＋ Upload gambar / video loop<input id="upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" hidden></label><small class="muted">PNG, JPG, WebP, GIF, MP4, WebM · maksimal 25 MB</small><label class="setting">Kecerahan <input id="brightness" type="range" min="30" max="130" value="90"><output id="brightnessValue">90%</output></label><label class="setting">Blur <input id="blur" type="range" min="0" max="16" value="0"><output id="blurValue">0 px</output></label></dialog>
-<aside id="youtubeDock" class="glass youtube-dock" aria-label="Mini player YouTube" hidden><div class="youtube-dock-head"><span>YouTube</span><button id="youtubeClose" aria-label="Tutup dan jeda video">Jeda & tutup ×</button></div><div id="youtubeFrame"></div></aside><script type="module" src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#17132c" />
+    <meta
+      name="description"
+      content="Ruang fokus dan tenang"
+    />
+    <title>Ayo focus — Ruang belajar dan kerja</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="scene" id="scene">
+      <div id="sceneImage"></div>
+      <video id="sceneVideo" muted loop playsinline hidden></video>
+    </div>
+    <div class="shade"></div>
+    <div class="app">
+      <header>
+        <a class="brand" href="/" aria-label="Lofi Focus beranda"
+          ><svg viewBox="0 0 32 32" fill="none">
+            <path
+              d="M22 5A12 12 0 1 0 27 23 13 13 0 0 1 22 5Z"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path
+              d="m25 8 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z"
+              fill="currentColor"
+            /></svg
+          ><span
+            >lofi<span class="brand-light">focus</span
+            ><small>RUANG UNTUK BERFOKUS</small></span
+          ></a
+        >
+        <nav id="nav" aria-label="Navigasi utama">
+          <button data-page="focus" class="selected">Fokus</button
+          ><button data-page="tasks">Task</button
+          ><button data-page="music">Musik</button
+          ><button data-page="stats">Statistik</button
+          ><button data-page="settings">Pengaturan</button>
+        </nav>
+        <div class="header-tools">
+          <button
+            id="backgroundButton"
+            class="icon"
+            aria-label="Pilih background"
+            title="Pilih background"
+          >
+            ▧</button
+          ><button
+            id="fullscreen"
+            class="icon"
+            aria-label="Layar penuh"
+            title="Layar penuh"
+          >
+            ⛶</button
+          ><button id="focusMode" class="pill" aria-pressed="false">
+            ◉ <span>Mode fokus</span>
+          </button>
+        </div>
+      </header>
+      <main>
+        <section id="page-focus" class="page focus-page">
+          <div class="room-label">
+            <span class="tiny">SUASANA SAAT INI</span
+            ><button id="roomName">Moonlit terrace ↗</button>
+          </div>
+          <div class="timer-area">
+            <div class="mode-tabs">
+              <button id="focusTab" class="selected">Waktu fokus</button
+              ><button id="breakTab">Istirahat</button>
+            </div>
+            <div class="timer-ring">
+              <svg viewBox="0 0 360 360" aria-hidden="true">
+                <circle class="ring-track" cx="180" cy="180" r="167" />
+                <circle id="ring" cx="180" cy="180" r="167" />
+              </svg>
+              <div class="timer-content">
+                <span id="timerEyebrow" class="tiny"
+                  >SATU HAL DALAM SATU WAKTU</span
+                >
+                <div id="time" role="timer" aria-label="Waktu tersisa">
+                  25:00
+                </div>
+                <div id="session">SESI 1 / 4</div>
+                <span id="activeTask">Pilih task untuk mulai fokus</span>
+              </div>
+            </div>
+            <div class="timer-controls">
+              <button
+                id="reset"
+                class="circle"
+                aria-label="Reset timer"
+                title="Reset timer"
+              >
+                ↺</button
+              ><button id="start" class="start">
+                ▶ <span>Mulai fokus</span></button
+              ><button
+                id="skip"
+                class="circle"
+                aria-label="Lewati sesi"
+                title="Lewati sesi"
+              >
+                ▸▸
+              </button>
+            </div>
+            <div class="presets">
+              <button data-preset="25,5" class="selected">25 / 5</button
+              ><button data-preset="50,10">50 / 10</button
+              ><button data-preset="10,2">10 / 2</button
+              ><button id="custom">Kustom <span>↗</span></button>
+            </div>
+            <p class="keyboard-hint">
+              SPACE untuk mulai / jeda <span>·</span> Z untuk Zen
+            </p>
+          </div>
+          <div class="focus-footer">
+            <section class="glass music-mini">
+              <div class="mini-art">♫</div>
+              <div class="track-meta">
+                <span class="tiny">YOUTUBE</span
+                ><button id="miniTrack">Pilih musik untuk fokus</button
+                ><small id="miniArtist"
+                  >Tempel tautan video atau playlist</small
+                >
+              </div>
+              <button
+                id="miniPlay"
+                class="circle small"
+                aria-label="Putar atau jeda YouTube"
+              >
+                ▶
+              </button>
+              <div class="song-progress"><i id="miniSongProgress"></i></div>
+            </section>
+            <section class="glass ambience-mini">
+              <button id="ambienceOpen"><span>≋</span> Suasana</button
+              ><button id="ambienceToggle" class="pill" aria-pressed="false">
+                Nyalakan</button
+              ><input
+                id="miniMaster"
+                type="range"
+                min="0"
+                max="100"
+                value="70"
+                aria-label="Volume ambience"
+              />
+            </section>
+            <section class="glass task-mini">
+              <div class="section-line">
+                <span class="tiny">TASK AKTIF</span
+                ><button data-page="tasks">Lihat semua ↗</button>
+              </div>
+              <div id="miniTaskEmpty">Apa yang ingin diselesaikan?</div>
+              <div id="miniTasks"></div>
+              <form id="quickTaskForm">
+                <input
+                  id="quickTask"
+                  maxlength="180"
+                  placeholder="Tambah task…"
+                  aria-label="Task baru"
+                  required
+                /><button aria-label="Tambah task">+</button>
+              </form>
+            </section>
+          </div>
+        </section>
+        <section id="page-tasks" class="page hidden">
+          <div class="page-head">
+            <span class="tiny">LANGKAH KECIL, KEMAJUAN NYATA</span>
+            <h1>Rencana fokusmu</h1>
+            <p>Pilih satu task. Beri waktu untuk menyelesaikannya.</p>
+          </div>
+          <form class="glass task-form" id="taskForm">
+            <input
+              id="taskInput"
+              placeholder="Apa yang ingin kamu kerjakan?"
+              maxlength="180"
+              required
+              aria-label="Nama task"
+            /><label
+              >Estimasi sesi
+              <input
+                id="taskEstimate"
+                type="number"
+                min="1"
+                max="99"
+                value="1"
+                required /></label
+            ><button class="primary">+ Tambah task</button>
+          </form>
+          <div id="taskList" class="glass task-list"></div>
+        </section>
+        <section id="page-music" class="page hidden">
+          <div class="page-head">
+            <span class="tiny">TEMUKAN RITMEMU</span>
+            <h1>Musik & suasana</h1>
+            <p>Musik pilihanmu, ditemani suara yang menenangkan.</p>
+          </div>
+          <div class="columns">
+            <section class="glass card">
+              <div class="section-line">
+                <h2>YouTube</h2>
+                <span id="youtubeStatus" class="muted">Pilih video</span>
+              </div>
+              <form id="youtubeForm" class="youtube-form">
+                <label class="stack"
+                  >Tautan video / playlist<input
+                    id="youtubeUrl"
+                    type="text"
+                    inputmode="url"
+                    placeholder="https://www.youtube.com/watch?v=…"
+                    required
+                    maxlength="500" /></label
+                ><label class="stack"
+                  >Nama playlist (opsional)<input
+                    id="youtubeName"
+                    maxlength="120"
+                    placeholder="Contoh: Lofi untuk belajar" /></label
+                ><button id="youtubeSubmit" class="primary full">
+                  Muat video / playlist
+                </button>
+              </form>
+              <div class="now-playing">
+                <div class="album" id="album">♫</div>
+                <div>
+                  <h3 id="trackTitle">Musik untuk menemanimu</h3>
+                  <p id="trackArtist">Video YouTube pilihanmu.</p>
+                  <a id="youtubeLink" hidden target="_blank" rel="noopener"
+                    >Buka di YouTube ↗</a
+                  >
+                </div>
+              </div>
+              <input
+                id="songSeek"
+                type="range"
+                min="0"
+                max="100"
+                value="0"
+                aria-label="Posisi lagu"
+                disabled
+              />
+              <div class="section-line muted">
+                <small id="songPosition">0:00</small
+                ><small id="songDuration">0:00</small>
+              </div>
+              <div class="playback">
+                <button
+                  id="musicPrev"
+                  class="circle"
+                  aria-label="Lagu sebelumnya"
+                >
+                  ◂◂</button
+                ><button
+                  id="musicPlay"
+                  class="circle accent"
+                  aria-label="Putar atau jeda musik"
+                >
+                  ▶</button
+                ><button
+                  id="musicNext"
+                  class="circle"
+                  aria-label="Lagu berikutnya"
+                >
+                  ▸▸</button
+                ><label
+                  >Volume<input
+                    id="musicVolume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="60"
+                    aria-label="Volume YouTube"
+                /></label>
+              </div>
+              <button id="youtubeShow" class="pill full">
+                Tampilkan mini player
+              </button>
+              <p id="musicError" class="notice" role="status"></p>
+              <div class="section-line">
+                <h3>Koleksi video & playlist</h3>
+                <button id="playlistFilter" class="pill">♡ Favorit</button>
+              </div>
+              <div id="playlists" class="playlist-list">
+                <p class="empty">
+                  Tambahkan tautan video atau playlist favoritmu.
+                </p>
+              </div>
+              <h3>Terakhir diputar</h3>
+              <div id="recentTracks" class="playlist-list">
+                <p class="empty">Riwayat video yang diputar di aplikasi ini.</p>
+              </div>
+            </section>
+            <section class="glass card">
+              <div class="section-line">
+                <h2>Ambience mixer</h2>
+                <button id="mixerToggle" class="pill">Nyalakan</button>
+              </div>
+              <p class="muted">
+                Racik suasanamu. Setiap suara punya volume sendiri.
+              </p>
+              <div id="mixer"></div>
+              <label class="setting"
+                >Volume utama<input
+                  id="masterVolume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="70" /></label
+              ><small class="muted"
+                >Suara ambience sintetis, dibuat langsung di perangkatmu.</small
+              >
+            </section>
+          </div>
+        </section>
+        <section id="page-stats" class="page hidden">
+          <div class="page-head">
+            <span class="tiny">SETIAP MENIT BERARTI</span>
+            <h1>Perjalanan fokusmu</h1>
+            <p id="statsSubtitle">Mulai sesi pertamamu hari ini.</p>
+          </div>
+          <div id="statCards" class="stat-grid"></div>
+          <div class="columns">
+            <section class="glass card">
+              <div class="section-line">
+                <h2>Fokus mingguan</h2>
+                <span class="muted">7 hari terakhir</span>
+              </div>
+              <div id="weekChart" class="chart"></div>
+              <p id="productiveDay" class="muted"></p>
+            </section>
+            <section class="glass card">
+              <h2>Targetmu</h2>
+              <div id="goals"></div>
+            </section>
+          </div>
+          <section class="glass card">
+            <h2>Pencapaian</h2>
+            <div id="badges" class="badges"></div>
+          </section>
+        </section>
+        <section id="page-settings" class="page hidden">
+          <div class="page-head">
+            <span class="tiny">BUAT NYAMAN DENGAN CARAMU</span>
+            <h1>Pengaturan ruang</h1>
+          </div>
+          <div class="columns">
+            <section class="glass card">
+              <h2>Pomodoro</h2>
+              <label class="setting"
+                >Durasi fokus
+                <span
+                  ><input
+                    id="focusMinutes"
+                    type="number"
+                    min="1"
+                    max="180"
+                    value="25"
+                  />
+                  menit</span
+                ></label
+              ><label class="setting"
+                >Durasi istirahat
+                <span
+                  ><input
+                    id="breakMinutes"
+                    type="number"
+                    min="1"
+                    max="60"
+                    value="5"
+                  />
+                  menit</span
+                ></label
+              ><label class="setting"
+                >Jumlah sesi
+                <input
+                  id="sessionCount"
+                  type="number"
+                  min="1"
+                  max="12"
+                  value="4" /></label
+              ><label class="setting"
+                >Mulai istirahat otomatis
+                <input
+                  id="autoBreak"
+                  type="checkbox"
+                  role="switch"
+                  checked /></label
+              ><label class="setting"
+                >Mulai fokus otomatis
+                <input id="autoFocus" type="checkbox" role="switch" /></label
+              ><label class="setting"
+                >Target harian
+                <span
+                  ><input
+                    id="dailyGoal"
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value="120"
+                  />
+                  menit</span
+                ></label
+              ><label class="setting"
+                >Target mingguan
+                <span
+                  ><input
+                    id="weeklyGoal"
+                    type="number"
+                    min="1"
+                    max="10080"
+                    value="600"
+                  />
+                  menit</span
+                ></label
+              >
+            </section>
+            <section class="glass card">
+              <h2>Pengingat suara</h2>
+              <label class="setting"
+                >Pilihan voice<select id="voiceMode">
+                  <option value="auto">Otomatis</option>
+                  <option value="female">Perempuan</option>
+                  <option value="male">Laki-laki</option>
+                  <option value="off">Mati</option>
+                </select></label
+              ><label class="setting"
+                >Suara tersedia<select id="voiceName">
+                  <option value="">Pilih otomatis</option>
+                </select></label
+              >
+              <p id="voiceNote" class="muted">
+                Menggunakan voice yang tersedia di browser/perangkat.
+              </p>
+              <button id="testVoice" class="pill">♪ Coba suara</button
+              ><label class="setting"
+                >Volume pengingat<input
+                  id="soundVolume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="75" /></label
+              ><label class="setting"
+                >Bunyi akhir sesi<input
+                  id="chime"
+                  type="checkbox"
+                  role="switch"
+                  checked /></label
+              ><label class="setting"
+                >Notifikasi desktop<input
+                  id="notifications"
+                  type="checkbox"
+                  role="switch"
+              /></label>
+            </section>
+            <section class="glass card">
+              <h2>Tampilan & fokus</h2>
+              <label class="setting"
+                >Tema<select id="theme">
+                  <option value="auto">Otomatis mengikuti background</option>
+                  <option value="midnight">Midnight</option>
+                  <option value="light">Terang</option>
+                </select></label
+              ><label class="setting"
+                >Animasi background<input
+                  id="animation"
+                  type="checkbox"
+                  role="switch"
+                  checked /></label
+              ><label class="setting"
+                >Simpan mini player di mode fokus<input
+                  id="keepPlayer"
+                  type="checkbox"
+                  role="switch"
+                  checked /></label
+              ><button id="settingsBackground" class="pill">
+                ▧ Pilih background</button
+              ><button id="zenButton" class="pill">Masuk Zen</button>
+            </section>
+            <section class="glass card">
+              <h2>YouTube</h2>
+              <p class="muted">
+                Tempel tautan video dan plalist anda
+                .
+              </p>
+              <p class="muted">
+                Mini player membantu anda untuk melihat video apa yang diputar.
+              </p>
+              <button id="youtubeSettingsOpen" class="pill">
+                Buka musik YouTube
+              </button>
+            </section>
+            <section class="glass card storage-card">
+              <h2>Penyimpanan</h2>
+              <p class="muted">
+                semua riwayat video yang anda putar akan tersimpan disini.
+              </p>
+              <p id="saveStatus" role="status">Menghubungkan penyimpanan…</p>
+              <button id="retrySave" class="pill" hidden>
+                Coba simpan lagi
+              </button>
+            </section>
+          </div>
+        </section>
+      </main>
+      <footer class="status-bar">
+        <span id="todaySummary">0 menit fokus hari ini</span
+        ><button id="zen">mode sikat</button><span id="clock"></span>
+      </footer>
+    </div>
+    <button id="exitZen" class="pill hidden">Keluar Zen · Esc</button>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <dialog id="backgroundDialog">
+      <div class="dialog-head">
+        <div>
+          <span class="tiny">GANTI SUASANA</span>
+          <h2>Tempat untuk fokus</h2>
+        </div>
+        <button
+          id="closeBackground"
+          class="circle"
+          aria-label="Tutup background"
+        >
+          ×
+        </button>
+      </div>
+      <div class="section-line">
+        <h3>Background pilihanmu</h3>
+        <button id="favoriteBackgrounds" class="pill">♡ Favorit</button>
+      </div>
+      <div id="backgroundGrid" class="background-grid"></div>
+      <h3>Preset lofi</h3>
+      <div id="presetGrid" class="background-grid"></div>
+      <h3>Upload kamu</h3>
+      <div id="customBackgrounds" class="background-grid"></div>
+      <label class="upload"
+        >＋ Upload gambar / video loop<input
+          id="upload"
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm"
+          hidden /></label
+      ><small class="muted"
+        >PNG, JPG, WebP, GIF, MP4, WebM · maksimal 25 MB</small
+      ><label class="setting"
+        >Kecerahan
+        <input
+          id="brightness"
+          type="range"
+          min="30"
+          max="130"
+          value="90"
+        /><output id="brightnessValue">90%</output></label
+      ><label class="setting"
+        >Blur <input id="blur" type="range" min="0" max="16" value="0" /><output
+          id="blurValue"
+          >0 px</output
+        ></label
+      >
+    </dialog>
+    <aside
+      id="youtubeDock"
+      class="glass youtube-dock"
+      aria-label="Mini player YouTube"
+      hidden
+    >
+      <div class="youtube-dock-head">
+        <span>YouTube</span
+        ><button id="youtubeClose" aria-label="Tutup dan jeda video">
+          Jeda & tutup ×
+        </button>
+      </div>
+      <div id="youtubeFrame"></div>
+    </aside>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
