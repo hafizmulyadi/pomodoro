@@ -126,9 +126,6 @@ export class YouTubeMusic {
       attributes: true,
       attributeFilter: ["class"],
     });
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) this.pause();
-    });
 
     this.renderLibrary();
     this.renderControls();
@@ -301,17 +298,19 @@ export class YouTubeMusic {
   }
   onState(e) {
     if (!this.ready) return;
+
     if (e.data === 1) {
-      if (document.hidden) {
-        this.pause();
-        return;
-      }
       $("musicError").textContent = "";
       $("youtubeStatus").textContent = "Sedang diputar";
       this.record();
-    } else if (e.data === 2) $("youtubeStatus").textContent = "Dijeda";
-    else if (e.data === 3) $("youtubeStatus").textContent = "Memuat video…";
-    else if (e.data === 0) $("youtubeStatus").textContent = "Selesai";
+    } else if (e.data === 2) {
+      $("youtubeStatus").textContent = "Dijeda";
+    } else if (e.data === 3) {
+      $("youtubeStatus").textContent = "Memuat video…";
+    } else if (e.data === 0) {
+      $("youtubeStatus").textContent = "Selesai";
+    }
+
     this.update();
   }
   layout() {
