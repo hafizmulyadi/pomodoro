@@ -308,7 +308,21 @@ export class YouTubeMusic {
     } else if (e.data === 3) {
       $("youtubeStatus").textContent = "Memuat video…";
     } else if (e.data === 0) {
-      $("youtubeStatus").textContent = "Selesai";
+      // Video selesai
+      if (this.current?.playlistId) {
+        $("youtubeStatus").textContent = "Memutar video berikutnya…";
+
+        this.player.nextVideo();
+
+        // Pastikan video berikutnya langsung diputar
+        setTimeout(() => {
+          if (this.ready) {
+            this.player.playVideo();
+          }
+        }, 500);
+      } else {
+        $("youtubeStatus").textContent = "Selesai";
+      }
     }
 
     this.update();
