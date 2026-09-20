@@ -9,11 +9,12 @@
     <meta name="theme-color" content="#17132c" />
     <meta
       name="description"
-      content="Ruang fokus dan tenang"
+      content="Ruang fokus pribadi dengan Pomodoro, suasana lofi, YouTube, task, dan statistik."
     />
-    <title>Ayo focus — Ruang belajar dan kerja</title>
+    <title>AYOfocus — Ruang belajar dan kerja</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/social.css" />
   </head>
   <body>
     <div class="scene" id="scene">
@@ -36,7 +37,7 @@
             /></svg
           ><span
             >Ayo<span class="brand-light">focus</span
-            ><small>RUANG UNTUK BELAJAR DAN KERJA</small></span
+            ><small>RUANG BELAJAR DAN KERJA</small></span
           ></a
         >
         <nav id="nav" aria-label="Navigasi utama">
@@ -488,11 +489,10 @@
             <section class="glass card">
               <h2>YouTube</h2>
               <p class="muted">
-                Tempel tautan video dan plalist anda
-                .
+                Tempel tautan video atau playlist publik dari YouTube.
               </p>
               <p class="muted">
-                Mini player membantu anda untuk melihat video apa yang diputar.
+                Mini player tetap terlihat saat video diputar.
               </p>
               <button id="youtubeSettingsOpen" class="pill">
                 Buka musik YouTube
@@ -501,7 +501,7 @@
             <section class="glass card storage-card">
               <h2>Penyimpanan</h2>
               <p class="muted">
-                semua riwayat video yang anda putar akan tersimpan disini.
+                Task, sesi, dan upload disimpan di server.
               </p>
               <p id="saveStatus" role="status">Menghubungkan penyimpanan…</p>
               <button id="retrySave" class="pill" hidden>
@@ -513,7 +513,7 @@
       </main>
       <footer class="status-bar">
         <span id="todaySummary">0 menit fokus hari ini</span
-        ><button id="zen">mode sikat</button><span id="clock"></span>
+        ><button id="zen">☾ Zen mode</button><span id="clock"></span>
       </footer>
     </div>
     <button id="exitZen" class="pill hidden">Keluar Zen · Esc</button>
@@ -580,5 +580,6 @@
       <div id="youtubeFrame"></div>
     </aside>
     <script type="module" src="/app.js"></script>
+    <script type="module" src="/social.bundle.js"></script>
   </body>
 </html>

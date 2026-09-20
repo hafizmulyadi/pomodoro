@@ -9,3 +9,6 @@
 Untuk mencoba di komputer: gunakan Node.js 24, jalankan `node server.mjs`, kemudian buka http://127.0.0.1:4173/. Mode lokal memakai SQLite; data lokal tidak otomatis dipindahkan ke Supabase.
 
 Paket ini tidak memuat password, API key, data pengguna, atau node_modules. Semua background dan kode YouTube disertakan. Ini paket siap dikonfigurasi, belum merupakan deployment di akun Vercel Anda.
+
+## Update Study Room
+Baca STUDY-ROOM.md setelah panduan Vercel. Jalankan supabase/social.sql dan tambahkan SUPABASE_ANON_KEY; voice juga memerlukan konfigurasi LiveKit.
