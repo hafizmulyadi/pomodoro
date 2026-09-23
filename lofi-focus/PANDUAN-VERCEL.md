@@ -111,6 +111,3 @@ Dokumentasi resmi:
 - Batas Function: https://vercel.com/docs/functions/limitations
 - Supabase Storage: https://supabase.com/docs/guides/storage
 - Bucket dan pembatasan file: https://supabase.com/docs/guides/storage/buckets/creating-buckets
-
-## Study Room dan kolaborasi
-Paket ini juga menyertakan chat, room, teman, shared goals, progres akun, serta integrasi voice. Setelah setup dasar di atas, ikuti STUDY-ROOM.md untuk migrasi sosial, Supabase Auth/Realtime, dan LiveKit.

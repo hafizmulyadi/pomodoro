@@ -1,0 +1,916 @@
+import {
+  defaults,
+  freshTimer,
+  remaining,
+  start,
+  pause,
+  transition,
+  statistics,
+} from "./core.mjs";
+import { Ambience, sounds } from "./audio.js";
+import { YouTubeMusic } from "./youtube.js";
+import { uploadBackground } from "./upload.mjs";
+const $ = (id) => document.getElementById(id),
+  $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (s) =>
+  String(s).replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ],
+  );
+const palettes = {
+  purple: ["#d1b6f3", "#281d3b", "29,22,48"],
+  green: ["#a4e5cf", "#102d28", "12,36,33"],
+  blue: ["#a1d4f2", "#132d43", "15,31,47"],
+  amber: ["#efc699", "#3a2515", "40,29,25"],
+};
+const scenes = [
+  {
+    id: "street",
+    name: "Rainy street",
+    url: "/assets/scene-1.png",
+    palette: "amber",
+  },
+  {
+    id: "forest-moon",
+    name: "Moonlit forest",
+    url: "/assets/scene-2.png",
+    palette: "green",
+  },
+  {
+    id: "lake",
+    name: "Midnight by the lake",
+    url: "/assets/scene-3.png",
+    palette: "blue",
+  },
+  {
+    id: "terrace",
+    name: "Moonlit terrace",
+    url: "/assets/scene-4.png",
+    palette: "purple",
+  },
+  ...[
+    "Rainy bedroom",
+    "Anime study room",
+    "Coffee shop",
+    "Library",
+    "Train at night",
+    "Forest cabin",
+    "Pixel room",
+    "Fireplace room",
+    "Japanese street",
+  ].map((name, i) => ({
+    id: `preset-${i}`,
+    name,
+    url: "/assets/presets.png",
+    cell: i,
+    palette: [
+      "purple",
+      "purple",
+      "amber",
+      "amber",
+      "blue",
+      "green",
+      "purple",
+      "amber",
+      "purple",
+    ][i],
+  })),
+  {
+    id: "night-city",
+    name: "Night city",
+    url: "/assets/scene-4.png",
+    palette: "blue",
+  },
+];
+let data = defaults(),
+  revision = 0,
+  ready = false,
+  dirty = false,
+  saving = false,
+  conflict = false,
+  page = "focus",
+  audioEnabled = false,
+  filterFav = false,
+  toastTimeout,
+  saveTimeout,
+  ownsTimer = false,
+  lockRelease;
+const ambience = new Ambience();
+let youtube;
+function toast(msg) {
+  $("toast").textContent = msg;
+  $("toast").classList.add("show");
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => $("toast").classList.remove("show"), 5000);
+}
+async function api(url, options = {}) {
+  const r = await fetch(url, options);
+  const body = await r.json();
+  if (!r.ok) {
+    const e = new Error(body.error || "Tidak dapat terhubung.");
+    e.status = r.status;
+    throw e;
+  }
+  return body;
+}
+function changed(immediate = false) {
+  if (!ready) return;
+  dirty = true;
+  $("saveStatus").textContent = "Menyimpan…";
+  clearTimeout(saveTimeout);
+  if (immediate) void persist();
+  else saveTimeout = setTimeout(persist, 300);
+}
+async function persist() {
+  if (!ready || saving || !dirty || conflict) return;
+  saving = true;
+  dirty = false;
+  try {
+    const r = await api("/api/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision, data }),
+      keepalive: JSON.stringify(data).length < 50000,
+    });
+    revision = r.revision;
+    $("saveStatus").textContent = "Tersimpan di server";
+    $("retrySave").hidden = true;
+  } catch (e) {
+    dirty = true;
+    conflict = e.status === 409;
+    $("saveStatus").textContent = e.message;
+    $("retrySave").hidden = false;
+    toast(e.message);
+  } finally {
+    saving = false;
+    if (dirty && !conflict && $("retrySave").hidden) setTimeout(persist, 100);
+  }
+}
+$("retrySave").onclick = () => {
+  if (conflict) {
+    toast("Buka ulang halaman untuk memuat data terbaru dari tab lain.");
+    return;
+  }
+  void persist();
+};
+function showPage(name) {
+  if (!["focus", "tasks", "music", "stats", "settings"].includes(name)) return;
+  page = name;
+  $$(".page").forEach((x) =>
+    x.classList.toggle("hidden", x.id !== `page-${name}`),
+  );
+  $$("[data-page]").forEach((x) =>
+    x.classList.toggle("selected", x.dataset.page === name),
+  );
+  if (name !== "focus") {
+    document.body.classList.remove("focus-mode", "zen");
+    $("exitZen").classList.add("hidden");
+    $("focusMode").setAttribute("aria-pressed", "false");
+  }
+  if (name === "stats") renderStats();
+  window.scrollTo(0, 0);
+}
+$$("[data-page]").forEach((b) => (b.onclick = () => showPage(b.dataset.page)));
+function time(s) {
+  s = Math.max(0, Math.ceil(s));
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+function renderTimer() {
+  const t = data.timer;
+  if (!t) return;
+  const r = remaining(t);
+  $("time").textContent = time(r);
+  document.title = `${t.running ? time(r) + " · " : ""}Lofi Focus`;
+  const label = t.mode === "focus" ? "fokus" : "istirahat";
+  $("start").innerHTML = t.running
+    ? "Ⅱ <span>Jeda</span>"
+    : `▶ <span>${r === t.total ? "Mulai " + label : "Lanjutkan"}</span>`;
+  $("start").setAttribute(
+    "aria-label",
+    t.running ? "Jeda timer" : "Mulai atau lanjutkan timer",
+  );
+  $("session").textContent =
+    `SESI ${t.session} / ${data.settings.sessionCount}`;
+  $("activeTask").textContent =
+    data.tasks.find((x) => x.id === (t.running ? t.taskId : data.activeTask))
+      ?.title || "Pilih task untuk mulai fokus";
+  $("ring").style.strokeDashoffset = 1049.29 * (1 - r / t.total);
+  $("focusTab").classList.toggle("selected", t.mode === "focus");
+  $("breakTab").classList.toggle("selected", t.mode === "break");
+  $("timerEyebrow").textContent =
+    t.mode === "focus"
+      ? "SATU HAL DALAM SATU WAKTU"
+      : "TARIK NAPAS. BERI DIRIMU JEDA.";
+  $$("[data-preset]").forEach((b) =>
+    b.classList.toggle(
+      "selected",
+      b.dataset.preset ===
+        `${data.settings.focusMinutes},${data.settings.breakMinutes}`,
+    ),
+  );
+}
+async function toggleTimer() {
+  if (!ready || conflict) {
+    toast("Penyimpanan belum siap. Coba muat ulang.");
+    return;
+  }
+  if (!ownsTimer) {
+    toast(
+      "Timer terbuka di tab lain, tutup tab tersebut.",
+    );
+    return;
+  }
+  await ambience.ready().catch(() => {});
+  const t = data.timer;
+  if (t.running) pause(t);
+  else {
+    const first = t.remaining === t.total;
+    start(t, data.activeTask);
+    if (first)
+      speak(
+        t.mode === "focus"
+          ? "Waktunya fokus. Kerjakan semua tugas anda tuan."
+          : "Istirahat dimulai. Rilekskan pikiranmu.",
+      );
+  }
+  renderTimer();
+  changed(true);
+}
+function finish(skipped = false) {
+  const result = transition(data, skipped);
+  if (!skipped) {
+    if (data.settings.chime)
+      ambience.chime(data.settings.soundVolume).catch(() => {});
+    const msg = result.finished
+      ? "Semua sesi selesai. Anda keren sekali."
+      : result.previous === "focus"
+        ? `Sesi fokus selesai. ${data.timer.running ? "Istirahat dimulai." : "Waktunya istirahat."}`
+        : `Istirahat selesai. ${data.timer.running ? "Sesi fokus dimulai." : "Siap kembali fokus?"}`;
+    speak(msg);
+    toast(msg);
+    if (
+      data.settings.notifications &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    )
+      new Notification("Lofi Focus", { body: msg, icon: "/favicon.svg" });
+  }
+  renderTimer();
+  renderTasks();
+  renderStats();
+  changed(true);
+}
+function reset(mode = data.timer.mode) {
+  if (!ownsTimer) return toast("Timer aktif di tab lain.");
+  data.timer = freshTimer(data.settings, mode, data.timer.session);
+  renderTimer();
+  changed(true);
+}
+$("start").onclick = toggleTimer;
+$("reset").onclick = () => reset();
+$("skip").onclick = () => {
+  if (ownsTimer) {
+    finish(true);
+    toast("Sesi dilewati; tidak dihitung dalam statistik.");
+  }
+};
+$("focusTab").onclick = () => {
+  if (data.timer.mode !== "focus") reset("focus");
+};
+$("breakTab").onclick = () => {
+  if (data.timer.mode !== "break") reset("break");
+};
+$$("[data-preset]").forEach(
+  (b) =>
+    (b.onclick = () => {
+      if (!ownsTimer) return;
+      const [f, k] = b.dataset.preset.split(",").map(Number);
+      data.settings.focusMinutes = f;
+      data.settings.breakMinutes = k;
+      data.timer = freshTimer(data.settings);
+      renderSettings();
+      renderTimer();
+      changed(true);
+    }),
+);
+$("custom").onclick = () => {
+  showPage("settings");
+  $("focusMinutes").focus();
+};
+setInterval(() => {
+  if (!ready) return;
+  const t = data.timer,
+    r = remaining(t);
+  if (ownsTimer && t.running) {
+    if (r <= 0) finish();
+    else if (!t.warned && r <= (t.mode === "focus" ? 60 : 10)) {
+      t.warned = true;
+      speak(
+        t.mode === "focus"
+          ? "Satu menit lagi. Selesaikan pikiranmu dengan tenang."
+          : "Istirahat selesai dalam sepuluh detik.",
+      );
+      changed();
+    }
+  }
+  renderTimer();
+  $("clock").textContent = new Date().toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}, 250);
+async function claimTimer() {
+  if (!navigator.locks) {
+    ownsTimer = true;
+    return;
+  }
+  navigator.locks.request(
+    "lofi-focus-timer",
+    { ifAvailable: true },
+    async (lock) => {
+      if (!lock) {
+        ownsTimer = false;
+        return;
+      }
+      ownsTimer = true;
+      await new Promise((resolve) => (lockRelease = resolve));
+    },
+  );
+}
+window.addEventListener("focus", () => {
+  if (!ownsTimer) void claimTimer();
+});
+function addTask(title, est = 1) {
+  title = title.trim();
+  if (!title) return;
+  const task = {
+    id: crypto.randomUUID(),
+    title: title.slice(0, 180),
+    est: Math.max(1, Math.min(99, Math.round(est) || 1)),
+    completed: 0,
+    done: false,
+  };
+  data.tasks.push(task);
+  if (!data.activeTask) data.activeTask = task.id;
+  renderTasks();
+  renderTimer();
+  changed();
+  return task;
+}
+function taskRow(t, mini = false) {
+  return `<div class="task-row ${t.done ? "done" : ""} ${data.activeTask === t.id ? "active" : ""}" data-id="${t.id}"><input type="checkbox" ${t.done ? "checked" : ""} data-action="done" aria-label="Selesaikan ${esc(t.title)}"><button class="task-title" data-action="active">${esc(t.title)}<small>${t.completed || 0} / ${t.est} sesi${data.activeTask === t.id ? " · Sedang dikerjakan" : ""}</small></button>${mini ? "" : `<button class="pill" data-action="active" ${t.done ? "disabled" : ""}>${data.activeTask === t.id ? "Aktif" : "Fokus"}</button><button class="remove" data-action="delete" aria-label="Hapus ${esc(t.title)}">×</button>`}</div>`;
+}
+function renderTasks() {
+  $("taskList").innerHTML = data.tasks.length
+    ? data.tasks.map((t) => taskRow(t)).join("")
+    : '<p class="empty">Belum ada task. Tambahkan hal pertama yang ingin kamu selesaikan.</p>';
+  const task = data.tasks.find((t) => t.id === data.activeTask && !t.done);
+  $("miniTaskEmpty").hidden = !!task;
+  $("miniTasks").innerHTML = task ? taskRow(task, true) : "";
+  for (const container of [$("taskList"), $("miniTasks")])
+    container.onclick = (e) => {
+      const b = e.target.closest("[data-action]");
+      if (!b) return;
+      const t = data.tasks.find(
+        (x) => x.id === b.closest("[data-id]").dataset.id,
+      );
+      if (!t) return;
+      if (b.dataset.action === "done") {
+        t.done = !t.done;
+        if (t.done && data.activeTask === t.id) data.activeTask = null;
+      }
+      if (b.dataset.action === "active" && !t.done) data.activeTask = t.id;
+      if (b.dataset.action === "delete") {
+        data.tasks = data.tasks.filter((x) => x.id !== t.id);
+        if (data.activeTask === t.id) data.activeTask = null;
+      }
+      renderTasks();
+      renderTimer();
+      changed();
+    };
+}
+$("taskForm").onsubmit = (e) => {
+  e.preventDefault();
+  addTask($("taskInput").value, Number($("taskEstimate").value));
+  $("taskInput").value = "";
+};
+$("quickTaskForm").onsubmit = (e) => {
+  e.preventDefault();
+  addTask($("quickTask").value);
+  $("quickTask").value = "";
+};
+function renderStats() {
+  const s = statistics(data.logs);
+  const fmt = (n) => `${Math.round(n)} menit`;
+  $("statCards").innerHTML = [
+    ["Fokus hari ini", fmt(s.today)],
+    ["Fokus minggu ini", fmt(s.week)],
+    ["Sesi selesai", s.count],
+    ["Rata-rata fokus", fmt(s.average)],
+  ]
+    .map(
+      ([a, b]) =>
+        `<div class="glass stat-card"><span>${a}</span><strong>${b}</strong></div>`,
+    )
+    .join("");
+  $("statsSubtitle").textContent = s.streak
+    ? `${s.streak} hari beruntun. Jaga ritme baikmu.`
+    : "Mulai sesi pertamamu hari ini.";
+  $("todaySummary").textContent =
+    `${fmt(s.today)} fokus hari ini${s.streak ? " · " + s.streak + " hari beruntun" : ""}`;
+  const max = Math.max(...s.days.map((d) => d.minutes), 1);
+  $("weekChart").innerHTML = s.days
+    .map(
+      (d) =>
+        `<div class="bar-column" title="${d.key}: ${fmt(d.minutes)}"><span>${Math.round(d.minutes)}</span><i style="height:${(d.minutes / max) * 135}px"></i><span>${d.label}</span></div>`,
+    )
+    .join("");
+  $("productiveDay").textContent = s.best
+    ? `Hari paling produktif: ${new Date(s.best[0] + "T12:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} · ${fmt(s.best[1])}`
+    : "Sesi selesai akan muncul di grafik ini.";
+  $("goals").innerHTML = [
+    ["Harian", s.today, data.settings.dailyGoal],
+    ["Mingguan", s.week, data.settings.weeklyGoal],
+  ]
+    .map(
+      ([label, value, target]) =>
+        `<div class="goal"><p><span>${label}</span><span>${fmt(value)} / ${fmt(target)}</span></p><progress value="${Math.min(value, target)}" max="${target}" aria-label="Target ${label}"></progress><small class="muted">${value >= target ? "Target tercapai. Kerja bagus!" : `${fmt(target - value)} lagi menuju target`}</small></div>`,
+    )
+    .join("");
+  $("badges").innerHTML = [
+    ["✦", "First Session", "Selesaikan 1 sesi", s.count >= 1],
+    ["◷", "1 Hour Focus", "60 menit total fokus", s.total >= 60],
+    ["♨", "7 Day Streak", "7 hari berturut-turut", longestStreak() >= 7],
+    ["☾", "Night Owl", "Fokus pukul 22–04", s.night],
+    ["☀", "Early Bird", "Fokus pukul 04–08", s.early],
+  ]
+    .map(
+      ([icon, name, desc, earned]) =>
+        `<div class="badge ${earned ? "earned" : ""}" aria-label="${name}: ${earned ? "terbuka" : "belum terbuka"}"><b>${icon}</b><span>${name}</span><small>${desc}</small></div>`,
+    )
+    .join("");
+}
+function longestStreak() {
+  const dates = [...new Set(data.logs.map((l) => l.date))].sort();
+  let longest = 0,
+    run = 0,
+    last = null;
+  for (const key of dates) {
+    const d = new Date(key + "T12:00:00");
+    const prev = new Date(d);
+    prev.setDate(prev.getDate() - 1);
+    run = last === prev.toDateString() ? run + 1 : 1;
+    last = d.toDateString();
+    longest = Math.max(longest, run);
+  }
+  return longest;
+}
+function allScenes() {
+  return [...scenes, ...data.backgrounds];
+}
+function sceneStyle(s) {
+  return `background-image:url('${s.url}');${s.cell !== undefined ? `background-size:300% 300%;background-position:${(s.cell % 3) * 50}% ${Math.floor(s.cell / 3) * 50}%;` : ""}`;
+}
+function applyScene() {
+  const s = allScenes().find((s) => s.id === data.scene) || scenes[3];
+  $("roomName").textContent = s.name + " ↗";
+  const vid = $("sceneVideo"),
+    img = $("sceneImage");
+  vid.pause();
+  vid.hidden = !s.type?.startsWith("video/");
+  img.hidden = !vid.hidden;
+  if (!vid.hidden) {
+    if (vid.getAttribute("src") !== s.url) vid.src = s.url;
+    if (data.settings.animation)
+      vid
+        .play()
+        .catch(() => toast("Klik sekali untuk memulai video background."));
+  } else {
+    img.style.backgroundImage = `url('${s.url}')`;
+    img.style.backgroundSize = "cover";
+    img.style.backgroundPosition = "center";
+    if (s.cell !== undefined) {
+      const w = Math.max(innerWidth, (innerHeight * 16) / 9),
+        h = (w * 9) / 16;
+      img.style.backgroundSize = `${w * 3}px ${h * 3}px`;
+      img.style.backgroundPosition = `${(innerWidth - w) / 2 - (s.cell % 3) * w}px ${(innerHeight - h) / 2 - Math.floor(s.cell / 3) * h}px`;
+    }
+  }
+  const p =
+    palettes[
+      data.settings.theme === "midnight" ? "purple" : s.palette || "purple"
+    ];
+  for (const [i, k] of ["--accent", "--accent-dark", "--tint"].entries())
+    document.documentElement.style.setProperty(k, p[i]);
+  document.body.classList.toggle("light", data.settings.theme === "light");
+  document.body.classList.toggle("keep-player", data.settings.keepPlayer);
+  $("scene").classList.toggle("animated", data.settings.animation);
+  document.documentElement.style.setProperty(
+    "--brightness",
+    data.settings.brightness / 100,
+  );
+  document.documentElement.style.setProperty(
+    "--blur",
+    data.settings.blur + "px",
+  );
+  $("brightnessValue").value = data.settings.brightness + "%";
+  $("blurValue").value = data.settings.blur + " px";
+}
+function sceneCard(s) {
+  return `<div class="bg-card ${data.scene === s.id ? "selected" : ""}"><button class="bg-preview" data-scene="${s.id}" aria-label="Pilih ${esc(s.name)}" style="${s.type?.startsWith("video/") ? "background:#252037" : sceneStyle(s)}">${s.type?.startsWith("video/") ? "▷ Video loop" : ""}</button><button class="favorite ${data.favorites.includes(s.id) ? "selected" : ""}" data-fav="${s.id}" aria-label="Favorit ${esc(s.name)}">${data.favorites.includes(s.id) ? "♥" : "♡"}</button>${s.custom ? `<button class="delete-bg" data-delete-bg="${s.id}" aria-label="Hapus ${esc(s.name)}">×</button>` : ""}<span>${esc(s.name)}</span></div>`;
+}
+function renderBackgrounds() {
+  const filter = (s) => !filterFav || data.favorites.includes(s.id);
+  $("backgroundGrid").innerHTML = scenes
+    .slice(0, 4)
+    .filter(filter)
+    .map(sceneCard)
+    .join("");
+  $("presetGrid").innerHTML = scenes
+    .slice(4)
+    .filter(filter)
+    .map(sceneCard)
+    .join("");
+  $("customBackgrounds").innerHTML =
+    data.backgrounds.filter(filter).map(sceneCard).join("") ||
+    '<p class="muted">Belum ada background.</p>';
+  $("favoriteBackgrounds").classList.toggle("selected", filterFav);
+}
+function openBackground() {
+  renderBackgrounds();
+  $("backgroundDialog").showModal();
+}
+for (const id of ["backgroundButton", "roomName", "settingsBackground"])
+  $(id).onclick = openBackground;
+$("closeBackground").onclick = () => $("backgroundDialog").close();
+$("backgroundDialog").onclick = async (e) => {
+  const b = e.target.closest("[data-scene],[data-fav],[data-delete-bg]");
+  if (!b) return;
+  if (b.dataset.scene) {
+    data.scene = b.dataset.scene;
+    applyScene();
+  }
+  if (b.dataset.fav) {
+    const id = b.dataset.fav;
+    data.favorites = data.favorites.includes(id)
+      ? data.favorites.filter((x) => x !== id)
+      : [...data.favorites, id];
+  }
+  if (b.dataset.deleteBg) {
+    const id = b.dataset.deleteBg;
+    try {
+      await api("/api/media/" + id, { method: "DELETE" });
+      data.backgrounds = data.backgrounds.filter((x) => x.id !== id);
+      data.favorites = data.favorites.filter((x) => x !== id);
+      if (data.scene === id) {
+        data.scene = "terrace";
+        applyScene();
+      }
+    } catch (err) {
+      toast(err.message);
+      return;
+    }
+  }
+  renderBackgrounds();
+  changed();
+};
+$("favoriteBackgrounds").onclick = () => {
+  filterFav = !filterFav;
+  renderBackgrounds();
+};
+$("upload").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 25 * 1024 * 1024) return toast("Pilih file maksimal 25 MB.");
+  $("upload").disabled = true;
+  toast("Mengunggah background…");
+  try {
+    const r = await uploadBackground(f);
+    data.backgrounds.push({
+      ...r,
+      name: f.name.slice(0, 80),
+      custom: true,
+      palette: "purple",
+    });
+    data.scene = r.id;
+    applyScene();
+    renderBackgrounds();
+    changed(true);
+    toast("Background tersimpan.");
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    $("upload").disabled = false;
+    $("upload").value = "";
+  }
+};
+window.addEventListener("resize", applyScene);
+let voices = [];
+function refreshVoices() {
+  voices = window.speechSynthesis?.getVoices() || [];
+  $("voiceName").innerHTML =
+    '<option value="">Pilih otomatis</option>' +
+    voices
+      .map(
+        (v) =>
+          `<option value="${esc(v.name)}">${esc(v.name)} (${esc(v.lang)})</option>`,
+      )
+      .join("");
+  $("voiceName").value = data.settings.voiceName || "";
+  updateVoiceNote();
+}
+function pickedVoice() {
+  if (data.settings.voiceName)
+    return voices.find((v) => v.name === data.settings.voiceName);
+  const lang = voices.filter((v) => v.lang.startsWith("id"));
+  let pool = lang.length ? lang : voices.filter((v) => v.lang.startsWith("en"));
+  if (!pool.length) pool = voices;
+  if (data.settings.voiceMode === "female") {
+    const v = pool.find((v) =>
+      /female|zira|samantha|aria|susan|jenny|gadis|ayu|indah|siti/i.test(
+        v.name,
+      ),
+    );
+    if (v) return v;
+  }
+  if (data.settings.voiceMode === "male") {
+    const v = pool.find((v) =>
+      /\bmale\b|david|daniel|guy|arif|andika|budi|mark|james/i.test(v.name),
+    );
+    if (v) return v;
+  }
+  return pool.find((v) => v.default) || pool[0];
+}
+function updateVoiceNote() {
+  const v = pickedVoice();
+  $("voiceNote").textContent =
+    data.settings.voiceMode === "off"
+      ? "Pengingat suara dimatikan."
+      : v
+        ? `Terpilih: ${v.name}. Pilihan gender mengikuti voice yang tersedia; pilih nama suara untuk hasil pasti.`
+        : "Voice sedang dimuat. Jika tidak tersedia, pengingat tetap muncul di layar.";
+}
+function speak(text) {
+  if (data.settings.voiceMode === "off" || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text),
+    v = pickedVoice();
+  if (v) u.voice = v;
+  u.lang = "id-ID";
+  u.volume = data.settings.soundVolume / 100;
+  u.rate = 0.95;
+  window.speechSynthesis.speak(u);
+}
+if (window.speechSynthesis)
+  window.speechSynthesis.addEventListener("voiceschanged", refreshVoices);
+$("testVoice").onclick = () => {
+  refreshVoices();
+  speak("Halo. Ruang fokusmu sudah siap. Selamat bekerja dengan tenang.");
+};
+function renderSettings() {
+  for (const [key, value] of Object.entries(data.settings)) {
+    const el = $(key);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!value;
+    else el.value = value;
+  }
+  $("miniMaster").value = data.settings.masterVolume;
+  updateVoiceNote();
+  applyScene();
+}
+for (const key of Object.keys(data.settings)) {
+  const el = $(key);
+  if (!el) continue;
+  el.addEventListener(el.type === "range" ? "input" : "change", async () => {
+    let value =
+      el.type === "checkbox"
+        ? el.checked
+        : el.type === "number" || el.type === "range"
+          ? Number(el.value)
+          : el.value;
+    if (el.type === "number") {
+      value = Math.round(value);
+      if (
+        !Number.isFinite(value) ||
+        value < Number(el.min) ||
+        value > Number(el.max)
+      ) {
+        el.value = data.settings[key];
+        toast(`Isi ${el.min}–${el.max}.`);
+        return;
+      }
+    }
+    if (key === "notifications" && value) {
+      if (!("Notification" in window)) {
+        el.checked = false;
+        return toast("Notifikasi tidak didukung browser ini.");
+      }
+      value = (await Notification.requestPermission()) === "granted";
+      el.checked = value;
+      if (!value) toast("Izin notifikasi belum diberikan.");
+    }
+    data.settings[key] = value;
+    if (["focusMinutes", "breakMinutes", "sessionCount"].includes(key)) {
+      if (!ownsTimer) {
+        toast("Pengaturan timer aktif di tab lain.");
+        return;
+      }
+      data.timer = freshTimer(data.settings);
+      renderTimer();
+    }
+    if (key === "voiceMode") data.settings.voiceName = "";
+    renderSettings();
+    renderStats();
+    applyAudio();
+    changed();
+  });
+}
+function applyAudio() {
+  ambience.set(data.ambience, data.settings.masterVolume, audioEnabled);
+  $("miniMaster").value = data.settings.masterVolume;
+  for (const id of ["ambienceToggle", "mixerToggle"]) {
+    $(id).textContent = audioEnabled ? "Jeda" : "Nyalakan";
+    $(id).setAttribute("aria-pressed", audioEnabled);
+  }
+}
+async function toggleAudio() {
+  try {
+    await ambience.ready();
+    audioEnabled = !audioEnabled;
+    applyAudio();
+  } catch {
+    toast("Audio belum tersedia di browser ini.");
+  }
+}
+function renderMixer() {
+  $("mixer").innerHTML = sounds
+    .map(
+      ([id, name, icon]) =>
+        `<label class="mixer-row"><span>${icon} ${name}</span><input type="range" data-sound="${id}" min="0" max="100" value="${data.ambience[id] || 0}" aria-label="Volume ${name}"><output>${data.ambience[id] || 0}%</output></label>`,
+    )
+    .join("");
+  $$("[data-sound]").forEach(
+    (input) =>
+      (input.oninput = async () => {
+        data.ambience[input.dataset.sound] = Number(input.value);
+        input.nextElementSibling.value = input.value + "%";
+        await ambience.ready();
+        audioEnabled = true;
+        applyAudio();
+        changed();
+      }),
+  );
+}
+$("miniMaster").oninput = () => {
+  data.settings.masterVolume = Number($("miniMaster").value);
+  $("masterVolume").value = data.settings.masterVolume;
+  applyAudio();
+  changed();
+};
+$("ambienceToggle").onclick = toggleAudio;
+$("mixerToggle").onclick = toggleAudio;
+$("ambienceOpen").onclick = () => showPage("music");
+function zen() {
+  showPage("focus");
+  document.body.classList.toggle("zen");
+  $("exitZen").classList.toggle(
+    "hidden",
+    !document.body.classList.contains("zen"),
+  );
+}
+for (const id of ["zen", "zenButton", "exitZen"]) $(id).onclick = zen;
+$("focusMode").onclick = () => {
+  showPage("focus");
+  document.body.classList.toggle("focus-mode");
+  $("focusMode").setAttribute(
+    "aria-pressed",
+    document.body.classList.contains("focus-mode"),
+  );
+};
+$("fullscreen").onclick = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch {
+    toast("Layar penuh tidak tersedia. Gunakan mode Zen.");
+  }
+};
+document.addEventListener("keydown", (e) => {
+  if (
+    ["INPUT", "SELECT", "TEXTAREA", "BUTTON"].includes(e.target.tagName) ||
+    $("backgroundDialog").open
+  )
+    return;
+  if (e.code === "Space" && page === "focus") {
+    e.preventDefault();
+    toggleTimer();
+  }
+  if (e.key.toLowerCase() === "z") zen();
+  if (e.key === "Escape" && document.body.classList.contains("zen")) zen();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") void persist();
+});
+window.addEventListener("beforeunload", (e) => {
+  if (dirty || saving) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+async function init() {
+  data.timer = freshTimer(data.settings);
+  renderSettings();
+  renderTimer();
+  renderTasks();
+  renderStats();
+  renderMixer();
+  refreshVoices();
+  try {
+    const r = await api("/api/state");
+    revision = r.revision;
+    if (r.data) {
+      const d = defaults();
+      data = {
+        ...d,
+        ...r.data,
+        settings: { ...d.settings, ...r.data.settings },
+        ambience: { ...d.ambience, ...r.data.ambience },
+      };
+    }
+    if (!data.timer) data.timer = freshTimer(data.settings);
+    ready = true;
+    await claimTimer();
+    renderSettings();
+    renderTimer();
+    renderTasks();
+    renderStats();
+    renderMixer();
+    refreshVoices();
+    $("saveStatus").textContent = "Tersimpan di server";
+  } catch (e) {
+    $("saveStatus").textContent = e.message;
+    toast(e.message);
+    $("start").disabled = true;
+    return;
+  }
+  youtube = new YouTubeMusic({
+    data,
+    changed,
+    toast,
+    showMusic: () => showPage("music"),
+  });
+  youtube.init();
+  if (document.modelContext?.registerTool) {
+    const tools = [
+      {
+        name: "read_focus_state",
+        description: "Read current Pomodoro timer and tasks.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+          additionalProperties: false,
+        },
+        annotations: { readOnlyHint: true },
+        execute: () => ({
+          mode: data.timer.mode,
+          running: data.timer.running,
+          remaining: remaining(data.timer),
+          tasks: data.tasks,
+        }),
+      },
+      {
+        name: "add_focus_task",
+        description: "Create a task in the focus task list.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: { type: "string", maxLength: 180 },
+            sessions: { type: "integer", minimum: 1, maximum: 99 },
+          },
+          required: ["title"],
+          additionalProperties: false,
+        },
+        execute: async (input) => {
+          if (
+            typeof input.title !== "string" ||
+            !input.title.trim() ||
+            input.title.length > 180 ||
+            (input.sessions !== undefined &&
+              (!Number.isInteger(input.sessions) ||
+                input.sessions < 1 ||
+                input.sessions > 99))
+          )
+            throw new Error("Invalid task");
+          const task = addTask(input.title, input.sessions);
+          await persist();
+          return { id: task.id, title: task.title, saved: !dirty };
+        },
+      },
+    ];
+    for (const tool of tools)
+      Promise.resolve(document.modelContext.registerTool(tool)).catch(() => {});
+  }
+}
+void init();

@@ -1,16 +1,1 @@
-node_modules/
-.data/
-.sites-runtime/
-dist/
-reference.html
-*.zip
 .env
-.env.*
-!.env.example
-.vercel/
-.cache/
-bootstrap.mjs
-public/base.css
-.env
-.env.local
-.env.production

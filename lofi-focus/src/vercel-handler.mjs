@@ -1,4 +1,3 @@
-import {socialHandler} from './social.mjs';
 import worker from './worker.mjs';
 import { createSupabase } from './supabase.mjs';
 const MAX_SIZE = 25 * 1024 * 1024;
@@ -30,7 +29,6 @@ export function createHandler(getStore = () => createSupabase()) {
       }
       const path = url.pathname;
       if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('Origin') !== url.origin) return fail('Permintaan lintas situs ditolak.', 403);
-      if (path.startsWith('/api/social/')) return socialHandler(request);
       if (path === '/api/youtube/info') return worker.fetch(request, {});
       if (!['/api/state','/api/upload/prepare','/api/upload/complete'].includes(path) && !path.startsWith('/api/media/')) return fail('Tidak ditemukan.', 404);
       const store = getStore();
@@ -78,4 +76,3 @@ export function createHandler(getStore = () => createSupabase()) {
     }
   };
 }
-

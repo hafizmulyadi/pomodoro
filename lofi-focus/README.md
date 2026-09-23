@@ -1,6 +1,3 @@
-## Update Study Room
-Panduan fitur sosial, migrasi, dan voice tersedia di [STUDY-ROOM.md](STUDY-ROOM.md).
-
 # Lofi Focus
 
 **Paket Vercel + Supabase.** Mulai dari [PANDUAN-VERCEL.md](PANDUAN-VERCEL.md). Kode ini sudah disesuaikan dari versi Cloudflare/Sites, sehingga ZIP lama tidak diperlukan.
@@ -9,7 +6,7 @@ Web Pomodoro berbahasa Indonesia dengan empat gambar pilihan pengguna, sepuluh p
 
 ## Menjalankan lokal
 
-Gunakan Node.js 24 atau lebih baru. Jalankan `node server.mjs`, lalu buka `http://127.0.0.1:4173/`. Jalankan `npm ci` sebelum memulai server karena fitur sosial menggunakan SDK Supabase dan LiveKit. SQLite dan upload disimpan di `.data/`; cadangkan folder ini jika memindahkan server. Untuk mengubah schema: `npm ci`, ubah `db/schema.ts`, kemudian `npm run db:generate`.
+Gunakan Node.js 24 atau lebih baru. Jalankan `node server.mjs`, lalu buka `http://127.0.0.1:4173/`. Aplikasi lokal tidak memerlukan instalasi paket. SQLite dan upload disimpan di `.data/`; cadangkan folder ini jika memindahkan server. Untuk mengubah schema: `npm ci`, ubah `db/schema.ts`, kemudian `npm run db:generate`.
 
 `npm test` menjalankan tes timer, sesi, statistik, penyimpanan, batas akses profil, dan upload. `npm run build` menyiapkan aset Vercel di `dist/client`. Function Vercel berada di `api/router.js`.
 
@@ -43,4 +40,3 @@ Referensi: https://developers.google.com/youtube/iframe_api_reference
 ## Validasi
 
 18 tes otomatis lulus, mencakup timer, task, statistik, persistensi, isolasi profil, YouTube, rute Vercel, upload langsung, pembersihan upload gagal, validasi isi file dan penolakan permintaan lintas origin. `supabase/setup.sql` diuji pada PostgreSQL lokal berbasis PGlite, termasuk penerapan ulang, revisi data, reservasi upload dan larangan akses anonim. Belum diuji dengan akun Supabase/Vercel milik pengguna; verifikasi setelah deployment dijelaskan dalam panduan. Ketersediaan embed YouTube dan voice mengikuti browser serta pembatasan pemilik video.
-
